@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import puppeteer from 'puppeteer';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import prisma from '../lib/prisma.js';
 import { generateInvoiceHTML } from '../lib/invoiceTemplate.js';
+import { appendToSheet, saveToDrive } from '../lib/googleServices.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,7 +122,27 @@ router.post('/', async (req, res) => {
       include: { client: true },
     });
 
-    // ── 7. Respond ────────────────────────────────────────────────────
+    // ── 7. Google Sheets + Drive (non-blocking) ──────────────────────
+    const pdfBuffer = fs.readFileSync(pdfFullPath);
+
+    // Append row to Google Sheets
+    appendToSheet({
+      invoiceId: invoice.id,
+      clientName,
+      taskName,
+      hours: hoursWorked,
+      rateUSD: hourlyRate,
+      currency,
+      exchangeRate,
+      subtotal: convertedTotal,
+      gstApplied: Boolean(gstEnabled),
+      finalTotal,
+    });
+
+    // Upload PDF to Google Drive
+    saveToDrive(pdfBuffer, clientName);
+
+    // ── 8. Respond ────────────────────────────────────────────────────
     const pdfUrl = `/invoices/${pdfFilename}`;
 
     return res.status(201).json({
