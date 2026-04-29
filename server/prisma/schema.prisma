@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+}
+
+model Invoice {
+  id             Int      @id @default(autoincrement())
+  taskName       String
+  hoursWorked    Float
+  hourlyRate     Float
+  currency       String
+  exchangeRate   Float
+  convertedTotal Float
+  gstAmount      Float    @default(0)
+  gstEnabled     Boolean  @default(false)
+  finalTotal     Float
+  invoiceDate    DateTime @default(now())
+  pdfPath        String?
+  clientId       Int
+  client         Client   @relation(fields: [clientId], references: [id])
+}
